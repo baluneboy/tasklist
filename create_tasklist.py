@@ -2,6 +2,7 @@
 
 import datetime
 import operator
+import inflect
 import pandas as pd
 from anytree import NodeMixin, RenderTree
 from dateutil.relativedelta import relativedelta
@@ -19,19 +20,10 @@ class DateTitle(object):
         return self.date.strftime('%Y-%m-%d %a')
 
     def _get_task_id(self):
-        return self.date.strftime('%y%m%d000')
+        return long(self.date.strftime('%y%m%d000'))
 
     def __str__(self):
         return self.title
-
-
-# class SubTitle(DateTitle):
-#     """generic subtitle for a child just under a DateTitle"""
-#
-#     def __init__(self, date):
-#         self.date = date
-#         self.title = self._get_title()
-#         self.task_id = self._get_task_id()
 
 
 class DateTask(object):
@@ -64,6 +56,12 @@ class SimpleTask(DateTask, NodeMixin):  # NodeMixin adds Node feature
             self.position = self.depth
 
 
+class PlaceHolderTask(SimpleTask):
+
+    def increment_task_id(self, value):
+        self.task_id += value
+
+
 class MonthTasks(object):
 
     def __init__(self, year, month):
@@ -71,22 +69,49 @@ class MonthTasks(object):
         self.year = year
         self.month = month
         self.d1 = datetime.datetime(self.year, self.month, 1)
-        self.d2 = self.d1 + relativedelta(months=1)
+        self.d2 = self.d1 + relativedelta(months=1) - relativedelta(days=1)
+        self._bullet_counter = 0
+        self._task_offset = 0
+        self._word_engine = inflect.engine()
+
+    def _reset_day_counters(self):
+        self._bullet_counter = 0
+        self._task_offset = 0
+
+    def add_day_subtask(self, date, title, category, tags, comments, day_parent):
+        self._bullet_counter += 10
+        self._task_offset += 1
+        sub = PlaceHolderTask(date, title, 'sub', ['t1', 't2'], 'nocom', parent=day_parent)
+        sub.increment_task_id(self._task_offset)
+
+    def _num2word(self, num):
+        return self._word_engine.number_to_words(num)
 
     def show_dates(self):
         for ts in pd.date_range(self.d1, self.d2):
             d = ts.to_pydatetime()
             # only create tasks for weekdays
             if d.isoweekday() in range(1, 6):
-                day_one = SimpleTask(d, None, 'day', ['ignore', ], 'day', parent=self.root)
+                self._reset_day_counters()
+                my_day = SimpleTask(d, None, 'day', ['ignore', ], 'day', parent=self.root)
+                self.add_day_subtask(d, '#', 'hash', ['ignore', ], 'hash', my_day)
 
-                print d.strftime('%Y-%m-%d %a'),
-                # on Monday, create weekly commanding task
+                # on Monday, create weekly commanding subtask
                 if d.isoweekday() == 1:
-                    print 'SAMS weekly commanding',
-                for i in ['one', 'two', 'three']:
-                    print i,
-                print
+                    title_str = '%d. SAMS nominal commanding.' % self._bullet_counter
+                    self.add_day_subtask(d, title_str, 'cmd', ['ignore', ], 'cmd', my_day)
+
+                # add a couple of placeholders too for each day
+                for num in range(1, 3):
+                    title_str = '%d. %s.' % (self._bullet_counter, self._num2word(num).title())
+                    self.add_day_subtask(d, title_str, 'num', ['ignore', ], 'num', my_day)
+
+        for pre, _, node in RenderTree(self.root):
+            if node.is_root:
+                continue
+            treestr = u"%s%s" % (pre, node.title)
+            print treestr.ljust(20), 'task id:', node.task_id,\
+                'depth:', node.depth, 'height:', node.height
 
 
 class Position(object):
