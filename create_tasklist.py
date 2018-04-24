@@ -110,7 +110,7 @@ class MonthTasks(object):
             if node.is_root:
                 continue
             treestr = u"%s%s" % (pre, node.title)
-            print treestr.ljust(20), 'task id:', node.task_id,\
+            print treestr.ljust(36), 'task id:', node.task_id,\
                 'depth:', node.depth, 'height:', node.height
 
 
