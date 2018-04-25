@@ -82,7 +82,8 @@ class MonthTasks(object):
         self._bullet_counter += 10
         self._task_offset += 1
         sub = PlaceHolderTask(date, title, 'sub', ['t1', 't2'], 'nocom', parent=day_parent)
-        sub.increment_task_id(self._task_offset)
+        offset_value = self._task_offset * 10**sub.depth
+        sub.increment_task_id(offset_value)
 
     def _num2word(self, num):
         return self._word_engine.number_to_words(num)
@@ -104,7 +105,9 @@ class MonthTasks(object):
                 # add a couple of placeholders too for each day
                 for num in range(1, 3):
                     title_str = '%d. %s.' % (self._bullet_counter, self._num2word(num).title())
-                    self.add_day_subtask(d, title_str, 'num', ['ignore', ], 'num', my_day)
+                    st = self.add_day_subtask(d, title_str, 'num', ['ignore', ], 'num', my_day)
+
+        self.add_day_subtask(d, 'hello', 'num', [], 'num', st)
 
         for pre, _, node in RenderTree(self.root):
             if node.is_root:
