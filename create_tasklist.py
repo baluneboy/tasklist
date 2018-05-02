@@ -71,19 +71,18 @@ class MonthTasks(object):
         self.d1 = datetime.datetime(self.year, self.month, 1)
         self.d2 = self.d1 + relativedelta(months=1) - relativedelta(days=1)
         self._bullet_counter = 0
-        self._task_offset = 0
+        self._daily_counter = 0
         self._word_engine = inflect.engine()
 
-    def _reset_day_counters(self):
+    def _reset_day_counter(self):
         self._bullet_counter = 0
-        self._task_offset = 0
+        self._daily_counter = 0
 
     def add_day_subtask(self, date, title, category, tags, comments, day_parent):
         self._bullet_counter += 10
-        self._task_offset += 1
+        self._daily_counter += 1
         sub = PlaceHolderTask(date, title, 'sub', ['t1', 't2'], 'nocom', parent=day_parent)
-        offset_value = self._task_offset * 10**(4 - sub.depth)
-        sub.increment_task_id(offset_value)
+        sub.increment_task_id(self._daily_counter)
         return sub
 
     def _num2word(self, num):
@@ -94,7 +93,7 @@ class MonthTasks(object):
             d = ts.to_pydatetime()
             # only create tasks for weekdays
             if d.isoweekday() in range(1, 6):
-                self._reset_day_counters()
+                self._reset_day_counter()
                 my_day = SimpleTask(d, None, 'day', ['ignore', ], 'day', parent=self.root)
                 self.add_day_subtask(d, '#', 'hash', ['ignore', ], 'hash', my_day)
 
@@ -118,8 +117,17 @@ class MonthTasks(object):
             if node.is_root:
                 continue
             treestr = u"%s%s" % (pre, node.title)
+
+            if node.depth > 1:
+                pstr = ''
+                for i, p in enumerate(node.path[0:-1]):
+                    pstr += '%s\\' % node.path[i].title
+            else:
+                pstr = ''
+
             print treestr.ljust(36), 'task id:', node.task_id,\
-                'depth:', node.depth, 'height:', node.height
+                'depth:', node.depth, 'height:', node.height,\
+                'siblings:', len(node.siblings), 'path:', pstr
 
 
 class Position(object):
